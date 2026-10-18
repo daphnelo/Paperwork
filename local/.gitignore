@@ -1,0 +1,6 @@
+.local/
+results/
+notebooks/
+__pycache__/
+*.pyc
+.env

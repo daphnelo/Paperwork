@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'self'; frame-src 'self'; form-action 'none'">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="在本地整理文件，用 Gemini 分析，讓結果回到你的工作台。">
+  <title>Paperwork · A4 學術筆記</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./browser-runtime.js" defer></script>
+<script src="./app.js" defer></script>
+  <script src="./paper.js" defer></script>
+  <script src="./folders.js" defer></script>
+</head>
+<body class="editor-primary editor-open">
+<svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V3m-5 5 5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4M8 16l-1 1a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m0 3 1-1a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0" transform="translate(2 -1)"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 8V3H3v13h5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 8V3h10v5M7 17H3V8h18v9h-4M7 14h10v7H7zM17 11h1"/></symbol>
+</defs></svg>
+
+<aside class="sidebar">
+  <a class="brand" href="/" aria-label="紙上首頁"><span class="brand-mark"><span></span><span></span><span></span></span><span>紙上<span class="brand-en">PAPERWORK</span></span></a>
+  <div class="workspace-label">我的工作空間</div>
+  <nav aria-label="主導航">
+    <button class="nav-item active" id="navWorkspace" type="button"><svg><use href="#i-grid"/></svg>分析工作台<span class="nav-dot"></span></button>
+    <button class="nav-item" id="navHistory" type="button"><svg><use href="#i-clock"/></svg>歷史記錄<span class="count" id="historyCount">0</span></button>
+    <button class="nav-item" id="navEditor" type="button"><svg><use href="#i-file"/></svg>學術筆記<span class="nav-dot"></span></button>
+    <button class="nav-item" id="navPaper" type="button"><svg><use href="#i-upload"/></svg>論文摘要引入</button>
+    <button class="nav-item" id="navSettings" type="button"><svg><use href="#i-settings"/></svg>連接與設定</button>
+  </nav>
+  <div class="sidebar-rule"></div>
+  <div class="workspace-label recent-label">最近的分析</div>
+  <div id="recentJobs" class="recent-jobs"><p class="sidebar-empty">第一份分析完成後，<br>你可以在這裡再次找到它。</p></div>
+  <div class="sidebar-bottom">
+    <div class="local-note"><span class="local-orbit"></span><div>屬於你的本地工作台<small>文件由 Gemini 雲端分析<br>結果儲存在你的電腦</small></div></div>
+    <div class="sidebar-footer"><span class="status-dot"></span>LOCAL WORKSPACE<span id="appVersion">v1.1.0</span></div>
+  </div>
+</aside>
+
+<div class="page">
+  <header class="topbar"><div class="breadcrumb">工作空間<span>/</span><strong id="breadcrumbTitle">分析工作台</strong></div><button class="connection-button" id="connectionButton" type="button"><span class="status-dot amber" id="connectionDot"></span><span id="connectionText">連接 Gemini</span><svg><use href="#i-settings"/></svg></button></header>
+  <main>
+    <section id="workspaceView" hidden>
+      <div class="page-heading"><div><div class="eyebrow">A LITTLE CLARITY, FROM EVERY DOCUMENT</div><h1>讓文件，變成清晰的答案<span>。</span></h1><p>上傳文件，交給 Gemini 整理，再把有用的結果留在本地。</p></div><span class="private-badge"><svg><use href="#i-folder"/></svg>本機工作空間</span></div>
+      <div class="workflow"><span class="current"><b>01</b> 匯入文件</span><i></i><span><b>02</b> 設定分析任務</span><i></i><span><b>03</b> 查看與儲存結果</span></div>
+      <div class="work-grid">
+        <section class="panel setup-panel" aria-labelledby="setupTitle">
+          <div class="panel-heading"><div><span class="section-number">01</span><h2 id="setupTitle">準備分析</h2></div><span class="muted small">PDF / WORD</span></div>
+          <div class="setup-content">
+            <input id="fileInput" class="sr-only" type="file" accept=".pdf,.docx" multiple aria-label="選擇 PDF 或 Word 文件">
+            <button id="browseFolder" class="folder-entry" type="button"><span class="folder-entry-icon"><svg><use href="#i-folder"/></svg></span><span><strong>從本機資料夾選取</strong><small>瀏覽筆電裡的 PDF／Word，搜尋後勾選</small></span><svg><use href="#i-arrow"/></svg></button>
+            <button class="dropzone" id="dropzone" type="button"><span class="upload-art"><svg><use href="#i-upload"/></svg></span><strong>把文件拖到這裡</strong><span>或 <em>點擊選擇文件</em></span><small>PDF、DOCX · 單檔 50 MB · 最多 5 份</small></button>
+            <ul id="fileList" class="file-list" aria-label="已選文件"></ul>
+            <p class="file-hint" id="docxHint" hidden><svg><use href="#i-info"/></svg>Word 僅讀取正文與表格文字。含圖片或重要版面時，請轉成 PDF。</p>
+            <div class="field-heading"><label for="prompt">你想從文件中了解什麼？</label><button class="text-button" id="savePrompt" type="button">儲存提示詞</button></div>
+            <div class="presets" role="group" aria-label="提示詞模板"><button data-preset="summary" class="selected" type="button">重點摘要</button><button data-preset="accounting" type="button">會計學習</button><button data-preset="extract" type="button">資訊提取</button><button data-preset="custom" type="button">自訂</button></div>
+            <textarea id="prompt" rows="6" maxlength="30000" placeholder="描述你的分析目標、需要的重點和輸出語言…"></textarea>
+            <div class="prompt-footer"><span>提示詞可編輯，下次打開仍會保留</span><span id="promptLength">0 字</span></div>
+            <div class="model-row"><label for="modelInput"><svg><use href="#i-spark"/></svg>分析模型</label><input id="modelInput" list="modelOptions" value="gemini-3.8-flash" aria-label="Gemini 模型編號"><datalist id="modelOptions"></datalist></div>
+            <button id="analyzeButton" class="button primary analyze-button" type="button"><svg><use href="#i-spark"/></svg><span id="analyzeLabel">開始分析</span><svg class="button-arrow"><use href="#i-arrow"/></svg></button>
+            <p class="submit-note" id="submitNote">點擊後，所選文件將發送至 Google Gemini。</p>
+          </div>
+        </section>
+
+        <section class="panel results-panel" aria-labelledby="resultTitle">
+          <div class="panel-heading"><div><span class="section-number">02</span><h2 id="resultTitle">分析結果</h2></div><span class="result-badge" id="resultBadge">等待分析</span></div>
+          <div class="result-empty" id="resultEmpty">
+            <div class="empty-illustration" aria-hidden="true"><div class="orbit one"></div><div class="orbit two"></div><div class="paper-back"></div><div class="paper-front"><span class="paper-mini-label">A CLEARER PICTURE</span><div class="paper-title"></div><div class="paper-line"></div><div class="paper-line short"></div><div class="paper-chart"><i></i><i></i><i></i><i></i><i></i></div><div class="paper-line"></div><div class="paper-line short"></div></div><div class="spark-bubble"><svg><use href="#i-spark"/></svg></div><span class="art-dot"></span></div>
+            <h3>留給思考，多一點空間</h3><p>把閱讀和整理的第一步交給 Gemini。<br>你的分析結果，會在這裡展開。</p>
+            <div class="empty-benefits"><span><svg><use href="#i-check"/></svg>按你的提示詞分析</span><span><svg><use href="#i-check"/></svg>結果自動儲存到本地</span></div>
+          </div>
+          <div class="processing" id="processing" hidden aria-live="polite"><div class="processing-orbit"><svg><use href="#i-spark"/></svg></div><h3 id="stageText">正在準備文件</h3><p id="stageDescription">請保持此分頁開啟，分析期間可以繼續編輯筆記。</p><progress id="jobProgress" max="100" value="0"></progress><div class="processing-meta"><span id="progressLabel">準備中</span><span id="elapsed">0 秒</span></div><p class="muted small">進度表示處理階段，Gemini 分析耗時取決於文件長度。</p></div>
+          <div class="result-error" id="resultError" hidden role="alert"><div class="error-symbol">!</div><h3>這次分析未能完成</h3><p id="errorText"></p><button type="button" id="backToSetup" class="button secondary">檢查設定後重試</button></div>
+          <div id="resultContent" class="result-content" hidden>
+            <div class="edit-report-bar"><div><strong>讓分析成為你的筆記</strong><span>A4 排版、腳註與卡片整理，接著在本機編輯。</span></div><button id="editReport" class="button primary compact" type="button"><svg><use href="#i-file"/></svg>送到筆記編輯器</button></div>
+            <div class="result-toolbar"><div class="result-tabs" role="tablist" aria-label="結果視圖"><button class="active" id="readTab" role="tab" aria-selected="true" type="button">閱讀視圖</button><button id="rawTab" role="tab" aria-selected="false" type="button">JSON 數據</button></div><div class="result-actions"><button class="icon-button" id="copyResult" title="複製分析內容" aria-label="複製分析內容" type="button"><svg><use href="#i-copy"/></svg></button><button class="icon-button" id="printResult" title="列印或另存為 PDF" aria-label="列印或另存為 PDF" type="button"><svg><use href="#i-print"/></svg></button></div></div>
+            <button id="paperRetryNew" class="text-button paper-new-copy" type="button" hidden>改為另建新筆記</button>
+            <article id="reportBody" class="report-body"></article><pre id="rawResult" class="raw-result" hidden></pre>
+            <div id="resultWarnings" class="result-warnings" hidden></div>
+            <div class="download-bar"><span><svg><use href="#i-download"/></svg>下載結果</span><div id="downloads"></div></div>
+            <div class="saved-location"><span id="savedPath"></span><button class="text-button" id="openResultFolder" type="button">打開資料夾 ↗</button></div>
+          </div>
+          <div class="results-footer" id="resultsFooter"><svg><use href="#i-file"/></svg><span>支持匯出 Markdown、TXT、HTML 和 JSON</span><span class="footer-dot">·</span><span>列印可另存為 PDF</span></div>
+        </section>
+      </div>
+      <div class="output-strip"><div class="output-icon"><svg><use href="#i-folder"/></svg></div><div class="output-copy"><span>結果儲存位置</span><p id="outputPath">正在連接本機服務…</p></div><button class="text-button" id="changeFolder" type="button">更改位置 <span>↗</span></button></div>
+      <p class="bottom-caption">少一點重複整理，多一點專注。</p>
+    </section>
+
+    <section id="historyView" hidden>
+      <div class="page-heading"><div><div class="eyebrow">YOUR DOCUMENT LIBRARY</div><h1>每一次整理，都有跡可循<span>。</span></h1><p>查看儲存在這台電腦上的分析結果與處理記錄。</p></div><button id="newAnalysis" class="button primary" type="button"><svg><use href="#i-upload"/></svg>新的分析</button></div>
+      <div class="history-tools"><h2>分析記錄 <span id="historyTotal">0</span></h2><input id="historySearch" type="search" placeholder="搜索文件名或報告標題" aria-label="搜索分析記錄"></div>
+      <div id="historyList" class="history-list"></div>
+    </section>
+    <section id="editorView" aria-labelledby="editorTitle">
+      <div class="editor-heading"><div><div class="eyebrow">PAPERWORK · ACADEMIC NOTES</div><h1 id="editorTitle">學術筆記</h1></div><div class="editor-heading-actions"><button id="editorBack" class="button secondary compact" type="button">返回分析</button><button id="editorFocus" class="button secondary compact" type="button" aria-pressed="false">專注編輯</button></div></div>
+      <div class="editor-status-line"><span id="editorStatus" role="status">A4 編輯器準備中…</span><span>在本機編輯 · 自動儲存 · Word / PDF / Markdown</span></div>
+      <div id="editorUnavailable" class="editor-notice" hidden><strong>編輯器已安裝，請重新啟動本機服務</strong><p>關閉執行 start.cmd 的舊視窗，再重新雙擊 start.cmd 並重新整理。重啟後，Gemini Key 需重新輸入一次；筆記與分析記錄會保留。</p></div>
+      <div id="editorLoadError" class="editor-notice" role="alert" hidden><strong>編輯器暫時無法載入</strong><p id="editorLoadErrorText"></p><button id="retryEditor" class="button secondary compact" type="button">重新載入編輯器</button></div>
+      <iframe id="editorFrame" class="editor-frame" title="A4 學術筆記編輯器" allow="local-fonts" hidden></iframe>
+      <div class="editor-save-location" id="editorSaveLocation"></div>
+    </section>
+  </main>
+  <footer class="page-footer"><span>紙上 PAPERWORK</span><span>本地工作台 · Powered by Gemini</span></footer>
+</div>
+
+<dialog id="geminiDialog" aria-labelledby="geminiTitle">
+  <div class="dialog-heading"><div><span class="eyebrow">PAPERWORK · GEMINI</span><h2 id="geminiTitle">Gemini 文件助理</h2><p class="gemini-subtitle">選取文件，將分析結果直接放進你的筆記。</p></div><button id="closeGemini" class="icon-button" type="button" aria-label="返回筆記"><svg><use href="#i-close"/></svg></button></div>
+  <nav class="gemini-tabs" aria-label="Gemini 功能"><button id="geminiAnalysisTab" class="selected" type="button">文件分析</button><button id="geminiPaperTab" type="button">論文摘要</button><button id="geminiHistoryTab" type="button">分析紀錄</button><button id="geminiResultTab" type="button">目前結果</button><button id="geminiSettings" type="button">連線設定</button></nav>
+  <div id="geminiAnalysisPane"></div><div id="geminiResultsPane" hidden></div><div id="geminiHistoryPane" hidden></div>
+  <div class="gemini-footnote">分析期間可以關閉此視窗，繼續編輯筆記。原始文件與筆記會保留。</div>
+</dialog>
+<fieldset id="analysisDestination" class="analysis-destination"><legend>結果放在哪裡？</legend><label><input type="radio" name="analysisDestination" value="insert" checked>插入目前筆記的游標位置</label><label><input type="radio" name="analysisDestination" value="new">建立全新筆記</label></fieldset>
+<div id="editorJobTray" class="editor-job-tray" hidden role="status"><button id="editorJobOpen" type="button"><span class="gemini-tray-icon">✦</span><span><strong id="editorJobTitle">Gemini 正在分析</strong><small id="editorJobDetail">你可以繼續編輯筆記</small></span></button><button id="editorJobDismiss" type="button" aria-label="收起分析狀態">×</button><progress id="editorJobProgress" max="100" value="0"></progress></div>
+<dialog id="settingsDialog" aria-labelledby="settingsTitle">
+  <div class="dialog-heading"><div><span class="eyebrow">MAKE IT YOURS</span><h2 id="settingsTitle">連接與設定</h2></div><button id="closeSettings" class="icon-button" aria-label="關閉設定" type="button"><svg><use href="#i-close"/></svg></button></div>
+  <div class="settings-body">
+    <p id="backendUpdateNotice" class="inline-feedback" role="status" hidden>網站已更新，請關閉原本執行 start.cmd 的視窗，重新雙擊 start.cmd，再重新整理此頁，才能載入新版錯誤診斷。重啟後需重新輸入 Key。</p>
+    <div class="settings-section"><div class="settings-label"><svg><use href="#i-spark"/></svg><h3>連接 Gemini</h3><span id="settingsKeyStatus" class="small muted">尚未連接</span></div><label for="apiKey">Gemini API Key</label><input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="在此貼上你的 API Key"><label class="remember-key"><input id="rememberKey" type="checkbox">記住金鑰於此瀏覽器，下次自動連線</label><p class="field-help">未勾選時，Key 僅保留在此網頁記憶體。勾選後會將輸入並驗證的 Key 存在此瀏覽器；清除連線時也會刪除記住的 Key。</p><div class="connection-actions"><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">在 Google AI Studio 獲取 Key ↗</a><button id="connectKey" class="button primary compact" type="button">驗證並連接</button></div><p id="keyFeedback" class="inline-feedback" role="status" hidden></p><button id="disconnectKey" class="text-button disconnect" type="button" hidden>清除本次連接</button></div>
+    <div class="settings-section"><div class="settings-label"><svg><use href="#i-folder"/></svg><h3>本地輸出資料夾</h3></div><label for="outputDirectory">儲存位置</label><button id="chooseOutputFolder" class="button secondary compact" type="button">選擇本機儲存資料夾</button> <button id="forgetOutputFolder" class="text-button" type="button">改用瀏覽器儲存</button><input id="outputDirectory" type="text" readonly spellcheck="false" placeholder="此瀏覽器的本機儲存空間"><p class="field-help">選擇資料夾後，報告與完整筆記庫會另存至其中的 Paperwork 子資料夾。未授權或不支援時，可使用下載與匯出 HTML；請定期備份，清除網站資料會移除瀏覽器中的筆記。</p></div>
+    <div class="settings-note"><svg><use href="#i-info"/></svg><p>筆記保存在此瀏覽器；所選文件與提示詞僅在開始分析後直接發往 Google。連接驗證只查詢可用模型，不會上傳文件。</p></div>
+  </div>
+  <div class="dialog-footer"><span id="settingsFeedback" role="status"></span><button id="saveSettings" class="button primary" type="button">儲存設定</button></div>
+</dialog>
+<dialog id="paperDialog" aria-labelledby="paperTitle">
+  <div class="dialog-heading"><div><span class="eyebrow">FROM PAPER TO KNOWLEDGE</span><h2 id="paperTitle">論文摘要引入</h2></div><button id="closePaper" class="icon-button" type="button" aria-label="關閉論文摘要引入"><svg><use href="#i-close"/></svg></button></div>
+  <div class="paper-wizard-body">
+    <section><h3><span>01</span> 選取論文或專書章節</h3><input id="paperFile" type="file" accept=".pdf,application/pdf" hidden><button id="paperDrop" class="paper-drop" type="button"><svg><use href="#i-upload"/></svg><strong id="paperFileLabel">選取一份 PDF，或拖曳到這裡</strong><small>單份最多 50 MB</small></button><button id="paperBrowseFolder" class="button secondary compact paper-folder-button" type="button"><svg><use href="#i-folder"/></svg>從本機資料夾挑選 PDF</button></section>
+    <section><h3><span>02</span> 選擇摘要模板</h3><div class="paper-types"><label><input type="radio" name="paperType" value="legal" checked>法學論文<small>法律論文摘要格式一</small></label><label><input type="radio" name="paperType" value="social">其他／社會科學論文<small>社科論文摘要格式一</small></label></div><details class="paper-prompt-details"><summary>檢視／微調 Prompt</summary><textarea id="paperPrompt" rows="9" maxlength="30000" aria-label="論文摘要提示詞"></textarea><button id="resetPaperPrompt" class="text-button" type="button">還原所選模板</button></details></section>
+    <section><h3><span>03</span> 選擇載入位置</h3><label class="paper-choice"><input type="radio" name="paperDestination" value="new" checked><span>建立為全新筆記<small>以論文篇名建立 A4 筆記</small></span></label><label class="paper-choice"><input type="radio" name="paperDestination" value="insert"><span>插入至目前筆記<small>插入編輯器游標處；未設定游標時接續文末</small></span></label><p class="field-help">摘要完成後，可勾選核心概念建立卡片，並自動連回文章。</p></section>
+    <section class="paper-connection"><div class="paper-connect-heading"><h3>Gemini 連線</h3><span id="paperConnectionStatus"></span></div><label for="paperKey">Gemini API Key</label><input id="paperKey" type="password" autocomplete="off" spellcheck="false" placeholder="已連線時可留空沿用"><label class="remember-key"><input id="paperRememberKey" type="checkbox">記住金鑰於此瀏覽器，下次自動連線</label><label for="paperModel">分析模型</label><input id="paperModel" list="modelOptions"><p class="field-help">PDF 與所選提示詞會送至 Google Gemini；編輯後的筆記儲存在本機。</p></section>
+    <p id="paperFeedback" class="inline-feedback" role="alert" hidden></p>
+  </div><div class="dialog-footer"><span>完成後進入 A4 筆記與概念卡片整理</span><button id="startPaper" class="button primary" type="button">開始智慧摘要</button></div>
+</dialog>
+<dialog id="folderDialog" aria-labelledby="folderTitle">
+  <div class="dialog-heading"><div><span class="eyebrow">YOUR FILES, WITHIN REACH</span><h2 id="folderTitle">本機資料夾</h2><p id="folderSubtitle">選取文件，讓 Gemini 整理成可閱讀的結果。</p></div><button id="closeFolder" class="icon-button" type="button" aria-label="關閉資料夾"><svg><use href="#i-close"/></svg></button></div>
+  <input id="directoryInput" type="file" webkitdirectory multiple hidden>
+  <div class="folder-source-bar"><button id="chooseDirectory" class="button primary compact" type="button"><svg><use href="#i-folder"/></svg>選擇電腦資料夾</button><button id="reopenDirectory" class="button secondary compact" type="button" hidden>重新讀取上次資料夾</button><button id="compatibleDirectory" class="text-button" type="button" hidden>使用相容模式</button><button id="forgetDirectory" class="text-button" type="button" hidden>忘記資料夾</button></div>
+  <div class="folder-library-tools"><input id="folderSearch" type="search" placeholder="搜尋檔名或子資料夾…" aria-label="搜尋本機文件"><select id="folderType" aria-label="檔案類型"><option value="all">PDF 與 Word</option><option value="pdf">PDF</option><option value="docx">Word（DOCX）</option></select></div>
+  <div class="folder-library-body"><aside class="folder-tree"><h3>資料夾</h3><div id="folderTree"></div></aside><section class="folder-files-pane" aria-label="可選取的文件"><div id="folderBreadcrumb" class="folder-breadcrumb"></div><div class="folder-list-actions"><button id="folderSelectVisible" class="text-button" type="button">勾選本頁</button><button id="folderClearSelection" class="text-button" type="button">清除勾選</button><span id="folderMatchCount"></span></div><div id="folderFiles" class="folder-files"></div><div class="folder-paging"><button id="folderPrev" class="text-button" type="button">上一頁</button><span id="folderPage"></span><button id="folderNext" class="text-button" type="button">下一頁</button></div></section></div>
+  <p id="folderFeedback" class="folder-feedback" role="status" aria-live="polite"></p>
+  <div class="dialog-footer"><div><strong id="folderSelectionCount">尚未勾選文件</strong><small id="folderUploadNote">選資料夾只列出檔案；按「開始分析」才送至 Gemini。</small></div><button id="useFolderSelection" class="button primary" type="button" disabled>加入分析清單</button></div>
+</dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<div id="connectionLost" class="connection-lost" role="alert" hidden>無法讀取網站資料，請確認瀏覽器允許網站儲存空間，再重新整理。<button id="reloadPage" type="button">重新整理頁面</button></div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "fake-indexeddb": "^6.2.6",
+    "jsdom": "^26.1.0"
+  },
+  "name": "paperwork",
+  "private": true,
+  "scripts": {
+    "test": "node tests/web-runtime.test.cjs"
+  }
+}
